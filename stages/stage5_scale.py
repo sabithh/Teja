@@ -206,8 +206,9 @@ torch.manual_seed(1337)
 # ========================
 # HYPERPARAMETERS
 # ========================
-batch_size    = STAGE_5_CONFIG['batch_size']                   # 16
-grad_accum    = STAGE_5_CONFIG['gradient_accumulation_steps']  # 4  → effective batch = 64
+batch_size      = STAGE_5_CONFIG['batch_size']                   # 16
+grad_accum      = STAGE_5_CONFIG['gradient_accumulation_steps']  # 4  → effective batch = 64
+eval_batch_size = 4   # smaller batch for eval — logits (4×256×50257) = 205MB vs 820MB at batch=16
 block_size    = STAGE_5_CONFIG['block_size']        # 256
 learning_rate = STAGE_5_CONFIG['learning_rate']     # 3e-4
 max_iters     = STAGE_5_CONFIG['max_iters']         # 50,000
@@ -344,11 +345,12 @@ print(f"  Vocab: {vocab_size:,} BPE tokens (GPT-2 tokenizer)")
 print(f"  Context window: {block_size} tokens (~{block_size * 4} chars)\n")
 
 
-def get_batch(split):
+def get_batch(split, bs=None):
     """Sample a random batch from train or val data."""
+    if bs is None:
+        bs = batch_size
     data = train_data if split == 'train' else val_data
-    ix   = torch.randint(len(data) - block_size, (batch_size,))
-    # Cast uint16 → int64 for embedding lookup
+    ix   = torch.randint(len(data) - block_size, (bs,))
     x = torch.stack([torch.from_numpy(data[i    : i + block_size    ].astype(np.int64)) for i in ix])
     y = torch.stack([torch.from_numpy(data[i + 1: i + block_size + 1].astype(np.int64)) for i in ix])
     return x.to(device), y.to(device)
@@ -361,7 +363,7 @@ def estimate_loss():
     for split in ['train', 'val']:
         losses = torch.zeros(eval_iters)
         for k in range(eval_iters):
-            X, Y = get_batch(split)
+            X, Y = get_batch(split, bs=eval_batch_size)
             _, loss = model(X, Y)
             losses[k] = loss.item()
         out[split] = losses.mean()
