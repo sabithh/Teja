@@ -6,11 +6,11 @@
 # numpy is included with PyTorch
 
 # Stage 5+: Data processing
-# datasets>=2.14.0        # HuggingFace datasets (for OpenWebText)
-# tqdm>=4.65.0            # Progress bars
+datasets>=2.14.0        # HuggingFace datasets (for OpenWebText)
+tqdm>=4.65.0            # Progress bars
 
 # Stage 6+: Tokenizer
-# tiktoken>=0.5.0         # OpenAI's BPE tokenizer
+tiktoken>=0.5.0         # OpenAI's BPE tokenizer (used from Stage 5)
 # sentencepiece>=0.1.99   # Google's tokenizer (alternative)
 
 # Stage 7+: Fine-tuning
