@@ -596,10 +596,33 @@ print(f"   Grad clip:  {grad_clip}\n")
 
 t0             = time.time()
 best_val_loss  = float('inf')
+start_step     = 0
+
 checkpoint_dir = os.path.join(os.path.dirname(__file__), '..', 'checkpoints')
 os.makedirs(checkpoint_dir, exist_ok=True)
 
-for step in range(max_iters + 1):
+# -----------------------------------------------------------------------
+# RESUME FROM CHECKPOINT
+# Checks Drive first (persists across sessions), then local.
+# If found, restores model weights, optimizer state, and step number
+# so training continues exactly where it left off.
+# -----------------------------------------------------------------------
+DRIVE_CKPT = '/content/drive/MyDrive/teja_checkpoints/teja_stage5_best.pt'
+LOCAL_CKPT = os.path.join(checkpoint_dir, 'teja_stage5_best.pt')
+resume_path = DRIVE_CKPT if os.path.exists(DRIVE_CKPT) else (LOCAL_CKPT if os.path.exists(LOCAL_CKPT) else None)
+
+if resume_path:
+    print(f"Resuming from: {resume_path}")
+    ckpt = torch.load(resume_path, map_location=device)
+    model.load_state_dict(ckpt['model_state_dict'])
+    optimizer.load_state_dict(ckpt['optimizer_state_dict'])
+    start_step    = ckpt['step']
+    best_val_loss = ckpt['val_loss']
+    print(f"  Step: {start_step:,} | Best val loss: {best_val_loss:.4f}\n")
+else:
+    print("No checkpoint found — starting from scratch.\n")
+
+for step in range(start_step, max_iters + 1):
 
     # ------------------------------------------------------------------
     # Evaluation
@@ -619,22 +642,30 @@ for step in range(max_iters + 1):
             f"{elapsed:.0f}s"
         )
 
-        # Save best checkpoint
+        # Save best checkpoint (local + Drive if mounted)
         if losses['val'] < best_val_loss:
             best_val_loss = losses['val']
-            torch.save({
-                'step':                step,
-                'model_state_dict':    model.state_dict(),
+            ckpt_data = {
+                'step':                 step,
+                'model_state_dict':     model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
-                'val_loss':            best_val_loss.item(),
-                'train_loss':          losses['train'].item(),
-                'vocab_size':          vocab_size,
-                'n_embd':              n_embd,
-                'n_head':              n_head,
-                'n_layer':             n_layer,
-                'block_size':          block_size,
-                'total_params':        total_params,
-            }, os.path.join(checkpoint_dir, 'teja_stage5_best.pt'))
+                'val_loss':             best_val_loss.item(),
+                'train_loss':           losses['train'].item(),
+                'vocab_size':           vocab_size,
+                'n_embd':               n_embd,
+                'n_head':               n_head,
+                'n_layer':              n_layer,
+                'block_size':           block_size,
+                'total_params':         total_params,
+            }
+            torch.save(ckpt_data, LOCAL_CKPT)
+            # Also save to Drive if mounted (survives runtime disconnects)
+            drive_dir = os.path.dirname(DRIVE_CKPT)
+            if os.path.exists(drive_dir):
+                torch.save(ckpt_data, DRIVE_CKPT)
+                print(f"   ✓ Checkpoint saved to Drive (step {step:,}, val {best_val_loss:.4f})")
+            else:
+                print(f"   ✓ Checkpoint saved locally (mount Drive to persist across sessions)")
 
     if step == max_iters:
         break
