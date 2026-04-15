@@ -82,9 +82,10 @@ STAGE_4_CONFIG = {
 # Stage 5+ — Scaled configs (for Colab)
 # =============================================================================
 STAGE_5_CONFIG = {
-    'batch_size': 64,
+    'batch_size': 16,              # Reduced from 64 to fit T4 (15GB) VRAM
+    'gradient_accumulation_steps': 4,  # Accumulate 4 steps → effective batch = 64
     'block_size': 256,
-    'learning_rate': 3e-4,  # Lower LR for larger model
+    'learning_rate': 3e-4,
     'max_iters': 50_000,
     'eval_interval': 1_000,
     'eval_iters': 200,

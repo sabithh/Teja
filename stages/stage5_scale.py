@@ -206,7 +206,8 @@ torch.manual_seed(1337)
 # ========================
 # HYPERPARAMETERS
 # ========================
-batch_size    = STAGE_5_CONFIG['batch_size']       # 64
+batch_size    = STAGE_5_CONFIG['batch_size']                   # 16
+grad_accum    = STAGE_5_CONFIG['gradient_accumulation_steps']  # 4  → effective batch = 64
 block_size    = STAGE_5_CONFIG['block_size']        # 256
 learning_rate = STAGE_5_CONFIG['learning_rate']     # 3e-4
 max_iters     = STAGE_5_CONFIG['max_iters']         # 50,000
@@ -582,12 +583,14 @@ optimizer = torch.optim.AdamW(
 # ========================================================================
 # TRAINING LOOP
 # ========================================================================
+effective_batch = batch_size * grad_accum
 print(f"Training for {max_iters:,} steps...")
-print(f"   Arch:     {n_layer} blocks × {n_head} heads × {n_embd} dims")
-print(f"   Context:  {block_size} BPE tokens (~{block_size * 4} chars)")
-print(f"   Batch:    {batch_size}  |  Dropout: {dropout}")
-print(f"   LR:       {learning_rate} → {min_lr} (cosine, {warmup_iters} warmup steps)")
-print(f"   Grad clip: {grad_clip}\n")
+print(f"   Arch:       {n_layer} blocks × {n_head} heads × {n_embd} dims")
+print(f"   Context:    {block_size} BPE tokens (~{block_size * 4} chars)")
+print(f"   Batch:      {batch_size} × {grad_accum} grad accum steps = {effective_batch} effective")
+print(f"   Dropout:    {dropout}")
+print(f"   LR:         {learning_rate} → {min_lr} (cosine, {warmup_iters} warmup steps)")
+print(f"   Grad clip:  {grad_clip}\n")
 
 t0             = time.time()
 best_val_loss  = float('inf')
@@ -603,7 +606,7 @@ for step in range(max_iters + 1):
         losses  = estimate_loss()
         elapsed = time.time() - t0
         lr_now  = get_lr(step)
-        tokens_processed = step * batch_size * block_size
+        tokens_processed = step * effective_batch * block_size
 
         print(
             f"   step {step:>6,} | "
@@ -642,13 +645,22 @@ for step in range(max_iters + 1):
         param_group['lr'] = lr
 
     # ------------------------------------------------------------------
-    # Forward + backward + gradient clip + step
+    # Forward + backward with gradient accumulation
+    #
+    # Instead of one big batch (batch_size=64), we run grad_accum=4
+    # smaller batches (batch_size=16) and SUM their gradients before
+    # stepping. Mathematically identical to a single batch of 64 —
+    # but uses 4× less VRAM at any one moment.
+    #
+    # We divide the loss by grad_accum so the gradient magnitude stays
+    # the same as if we'd done one big batch.
     # ------------------------------------------------------------------
-    xb, yb = get_batch('train')
-    _, loss = model(xb, yb)
-
     optimizer.zero_grad(set_to_none=True)
-    loss.backward()
+    for micro_step in range(grad_accum):
+        xb, yb   = get_batch('train')
+        _, loss  = model(xb, yb)
+        loss     = loss / grad_accum   # scale loss so gradients average correctly
+        loss.backward()                # accumulates into .grad buffers
 
     # GRADIENT CLIPPING — clips total gradient norm to grad_clip (=1.0)
     torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
