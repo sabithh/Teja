@@ -1,0 +1,22 @@
+# Teja — Core Dependencies
+# PyTorch with CUDA (install separately):
+#   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+
+# Stage 1-4: No extra dependencies beyond PyTorch
+# numpy is included with PyTorch
+
+# Stage 5+: Data processing
+# datasets>=2.14.0        # HuggingFace datasets (for OpenWebText)
+# tqdm>=4.65.0            # Progress bars
+
+# Stage 6+: Tokenizer
+# tiktoken>=0.5.0         # OpenAI's BPE tokenizer
+# sentencepiece>=0.1.99   # Google's tokenizer (alternative)
+
+# Stage 7+: Fine-tuning
+# peft>=0.6.0             # LoRA / QLoRA
+# transformers>=4.35.0    # For tokenizer utilities
+
+# Stage 8: Scaling
+# wandb>=0.16.0           # Experiment tracking
+# accelerate>=0.24.0      # Distributed training

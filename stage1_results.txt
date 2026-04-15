@@ -1,0 +1,40 @@
+Step     0: train loss = 4.7305 | val loss = 4.7241
+Step   500: train loss = 4.1777 | val loss = 4.1811
+Step 1,000: train loss = 3.7309 | val loss = 3.7377
+Step 1,500: train loss = 3.3827 | val loss = 3.3909
+Step 2,000: train loss = 3.1246 | val loss = 3.1278
+Step 2,500: train loss = 2.9429 | val loss = 2.9429
+Step 3,000: train loss = 2.8009 | val loss = 2.8077
+Step 3,500: train loss = 2.7122 | val loss = 2.7127
+Step 4,000: train loss = 2.6468 | val loss = 2.6375
+Step 4,500: train loss = 2.5979 | val loss = 2.5999
+Step 5,000: train loss = 2.5601 | val loss = 2.5763
+Step 5,500: train loss = 2.5363 | val loss = 2.5527
+Step 6,000: train loss = 2.5334 | val loss = 2.5404
+Step 6,500: train loss = 2.5158 | val loss = 2.5137
+Step 7,000: train loss = 2.4994 | val loss = 2.5151
+Step 7,500: train loss = 2.4843 | val loss = 2.5081
+Step 8,000: train loss = 2.4808 | val loss = 2.4904
+Step 8,500: train loss = 2.4745 | val loss = 2.4971
+Step 9,000: train loss = 2.4676 | val loss = 2.4771
+Step 9,500: train loss = 2.4660 | val loss = 2.4864
+Step 10,000: train loss = 2.4729 | val loss = 2.4748
+
+=== GENERATED TEXT ===
+--------------------------------------------------
+
+pYCXxfRkRZd
+wc'wfNfT;OLlTEeC K
+jxqPToTb?bXAUG:C-SGJO-33SM:C?YI3a
+hs:LVXJFhXeNuwqhObxZ.tSVrddXlaSZaNevjw3cHPyZWk,f'qZa-oizCjmuX
+YoR&$FMVTfXibIcB!!BA!$W:CdYlHxcbegRirYeYERnkciK;lxWvHFliqmoGSKtSV&BLqWk -.SGFW.byWjbO!UelIljnF$UV&v.C-hsE3SPyckzby:CUup;MpJssX3Qwty;vJlvBPUuIkyBf&pxY-ggCIgj$k:CGlIkJdlyltSPk
+--------------------------------------------------
+
+???? Training for 10,000 iterations...
+   Batch size: 32 | Block size: 8
+   Learning rate: 0.001
+   Evaluating every 500 steps
+
+   Step     0: train loss = 4.7305 | val loss = 4.7241
+   Step   500: train loss = 4.1777 | val loss = 4.1811
+   Step 1,000: tr
