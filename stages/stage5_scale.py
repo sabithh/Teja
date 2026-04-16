@@ -607,9 +607,17 @@ os.makedirs(checkpoint_dir, exist_ok=True)
 # If found, restores model weights, optimizer state, and step number
 # so training continues exactly where it left off.
 # -----------------------------------------------------------------------
-DRIVE_CKPT = '/content/drive/MyDrive/teja_checkpoints/teja_stage5_best.pt'
-LOCAL_CKPT = os.path.join(checkpoint_dir, 'teja_stage5_best.pt')
-resume_path = DRIVE_CKPT if os.path.exists(DRIVE_CKPT) else (LOCAL_CKPT if os.path.exists(LOCAL_CKPT) else None)
+# Persistent locations — checked in order for resume, saved to all that exist
+KAGGLE_CKPT = '/kaggle/working/teja_stage5_best.pt'           # survives Kaggle session end
+DRIVE_CKPT  = '/content/drive/MyDrive/teja_checkpoints/teja_stage5_best.pt'  # Colab + Drive
+LOCAL_CKPT  = os.path.join(checkpoint_dir, 'teja_stage5_best.pt')
+
+resume_path = (
+    KAGGLE_CKPT if os.path.exists(KAGGLE_CKPT) else
+    DRIVE_CKPT  if os.path.exists(DRIVE_CKPT)  else
+    LOCAL_CKPT  if os.path.exists(LOCAL_CKPT)  else
+    None
+)
 
 if resume_path:
     print(f"Resuming from: {resume_path}")
@@ -659,13 +667,16 @@ for step in range(start_step, max_iters + 1):
                 'total_params':         total_params,
             }
             torch.save(ckpt_data, LOCAL_CKPT)
-            # Also save to Drive if mounted (survives runtime disconnects)
-            drive_dir = os.path.dirname(DRIVE_CKPT)
-            if os.path.exists(drive_dir):
+            saved_to = [LOCAL_CKPT]
+            # Kaggle: save to /kaggle/working/ — appears in Output tab, survives session end
+            if os.path.exists('/kaggle/working'):
+                torch.save(ckpt_data, KAGGLE_CKPT)
+                saved_to.append('Kaggle Output')
+            # Colab: save to Drive if mounted
+            if os.path.exists(os.path.dirname(DRIVE_CKPT)):
                 torch.save(ckpt_data, DRIVE_CKPT)
-                print(f"   ✓ Checkpoint saved to Drive (step {step:,}, val {best_val_loss:.4f})")
-            else:
-                print(f"   ✓ Checkpoint saved locally (mount Drive to persist across sessions)")
+                saved_to.append('Google Drive')
+            print(f"   ✓ Checkpoint saved → {', '.join(saved_to)} (step {step:,}, val {best_val_loss:.4f})")
 
     if step == max_iters:
         break
