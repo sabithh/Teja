@@ -635,9 +635,10 @@ try:
         out    = model.generate(idx, max_new_tokens=200)
         # Decode only the new tokens (after the prompt)
         new_tokens = out[0, len(prompt):].tolist()
-        # Remove EOT if present
+        # Remove EOT and any special tokens (ids >= 50257)
         if EOT_TOKEN in new_tokens:
             new_tokens = new_tokens[:new_tokens.index(EOT_TOKEN)]
+        new_tokens = [t for t in new_tokens if t < 50_257]
         return enc.decode(new_tokens)
 
     print("\n" + "="*60)
