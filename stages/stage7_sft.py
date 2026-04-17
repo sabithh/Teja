@@ -159,15 +159,15 @@ dropout    = 0.1      # lower dropout for fine-tuning
 vocab_size = 50_257   # GPT-2 BPE base (special tokens added on top)
 
 # Fine-tuning hyperparameters
-learning_rate  = 1e-4    # 3x lower than Stage 5 (3e-4 → 1e-4)
+learning_rate  = 5e-5    # lower LR to prevent overfitting
 min_lr         = 1e-5
-num_epochs     = 3       # 3 passes over the dataset
-eval_interval  = 200     # evaluate every 200 steps
+num_epochs     = 1       # 1 epoch is enough for SFT on 52K examples
+eval_interval  = 100     # evaluate more frequently to catch best checkpoint
 eval_iters     = 50
 grad_clip      = 1.0
 warmup_steps   = 100
 batch_size     = 8       # smaller batch for fine-tuning (sequences are longer)
-save_every     = 200     # save checkpoint every N steps regardless of val loss
+save_every     = 100     # save checkpoint every N steps regardless of val loss
 
 # Special token ids (appended after GPT-2's 50,257 base vocab)
 SYSTEM_TOKEN    = 50_257
