@@ -273,11 +273,13 @@ class TejaGPT(nn.Module):
 
         loss = None
         if targets is not None:
-            B, T, C = logits.shape
-            # targets = -100 means ignore that position (user/system tokens)
+            # Shift: logits[i] predicts targets[i+1] (next-token prediction)
+            shift_logits  = logits[:, :-1, :].contiguous()
+            shift_targets = targets[:, 1:].contiguous()
+            B, T, C       = shift_logits.shape
             loss = F.cross_entropy(
-                logits.view(B * T, C),
-                targets.view(B * T),
+                shift_logits.view(B * T, C),
+                shift_targets.view(B * T),
                 ignore_index=-100
             )
         return logits, loss
