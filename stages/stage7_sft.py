@@ -327,10 +327,20 @@ if stage5_path:
     # that's fine. We copy everything that matches.
     model_state = model.state_dict()
     for k, v in state.items():
-        if k in model_state and model_state[k].shape == v.shape:
+        if k not in model_state:
+            continue
+        model_shape = model_state[k].shape
+        if model_shape == v.shape:
             model_state[k].copy_(v)
-        elif k in model_state:
-            print(f"  Shape mismatch for {k}: ckpt={v.shape} model={model_state[k].shape} — skipping")
+        elif (k in ('token_embedding_table.weight', 'lm_head.weight')
+              and v.shape[1] == model_shape[1]
+              and v.shape[0] < model_shape[0]):
+            # Vocab extended from 50257 → 50261: copy old rows, leave the 4
+            # new special-token rows at their (small) random init.
+            print(f"  Extending {k}: {tuple(v.shape)} → {tuple(model_shape)} (new rows kept random)")
+            model_state[k][:v.shape[0]].copy_(v)
+        else:
+            print(f"  Shape mismatch for {k}: ckpt={tuple(v.shape)} model={tuple(model_shape)} — skipping")
     print(f"  Stage 5 weights loaded ✓  (val loss was {ckpt.get('val_loss', '?'):.4f})")
 else:
     print("  WARNING: No Stage 5 checkpoint found — fine-tuning from scratch!")
