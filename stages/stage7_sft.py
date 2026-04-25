@@ -182,10 +182,12 @@ STAGE5_CKPT  = os.path.join(os.path.dirname(__file__), '..', 'checkpoints', 'tej
 KAGGLE_S5    = '/kaggle/working/teja/checkpoints/teja_stage5_best.pt'
 DRIVE_S5     = '/content/drive/MyDrive/teja_checkpoints/teja_stage5_best.pt'
 
-BEST_CKPT    = os.path.join(os.path.dirname(__file__), '..', 'checkpoints', 'teja_stage7_best.pt')
+BEST_CKPT     = os.path.join(os.path.dirname(__file__), '..', 'checkpoints', 'teja_stage7_best.pt')
 PERIODIC_CKPT = os.path.join(os.path.dirname(__file__), '..', 'checkpoints', 'teja_stage7_latest.pt')
-KAGGLE_BEST  = '/kaggle/working/teja_stage7_best.pt'
+KAGGLE_BEST   = '/kaggle/working/teja_stage7_best.pt'
 KAGGLE_LATEST = '/kaggle/working/teja_stage7_latest.pt'
+DRIVE_BEST    = '/content/drive/MyDrive/teja_checkpoints/teja_stage7_best.pt'
+DRIVE_LATEST  = '/content/drive/MyDrive/teja_checkpoints/teja_stage7_latest.pt'
 
 
 # ========================================================================
@@ -520,18 +522,28 @@ def save_checkpoint(path, step, val_loss, optimizer):
         'block_size':           block_size,
     }
     torch.save(data, path)
-    # Mirror to Kaggle Output root (persists after session end)
+    # Mirror to Kaggle output root
     if os.path.exists('/kaggle/working'):
         kaggle_path = path.replace(
             os.path.join(os.path.dirname(__file__), '..', 'checkpoints'),
             '/kaggle/working'
         )
         torch.save(data, kaggle_path)
+    # Mirror to Google Drive on Colab (survives session resets)
+    drive_root = '/content/drive/MyDrive/teja_checkpoints'
+    if os.path.exists('/content/drive/MyDrive'):
+        os.makedirs(drive_root, exist_ok=True)
+        if 'latest' in path:
+            drive_path = DRIVE_LATEST
+        else:
+            drive_path = DRIVE_BEST
+        torch.save(data, drive_path)
+        print(f"   Also saved to Drive: {drive_path}")
 
 
 def load_resume_checkpoint(optimizer):
     """Check for existing Stage 7 checkpoint and resume if found."""
-    for path in [BEST_CKPT, KAGGLE_BEST]:
+    for path in [BEST_CKPT, KAGGLE_BEST, DRIVE_BEST]:
         if os.path.exists(path):
             print(f"Resuming Stage 7 from: {path}")
             ckpt = torch.load(path, map_location=device)
