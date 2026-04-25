@@ -687,7 +687,9 @@ except ImportError:
 # FINAL SUMMARY
 # ========================================================================
 losses = estimate_loss()
-save_checkpoint(BEST_CKPT, max_steps, losses['val'].item(), optimizer)
+# Save final state to a separate path — never overwrite the best checkpoint
+FINAL_CKPT = BEST_CKPT.replace('best', 'final')
+save_checkpoint(FINAL_CKPT, max_steps, losses['val'].item(), optimizer)
 
 print(f"""
 {'='*60}
