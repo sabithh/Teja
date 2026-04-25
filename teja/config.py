@@ -86,7 +86,7 @@ STAGE_5_CONFIG = {
     'gradient_accumulation_steps': 4,  # Accumulate 4 steps → effective batch = 64
     'block_size': 256,
     'learning_rate': 3e-4,
-    'max_iters': 50_000,
+    'max_iters': 150_000,           # Extended from 50K to 150K to push val loss below 4.0
     'eval_interval': 1_000,
     'eval_iters': 200,
     'n_embd': 384,

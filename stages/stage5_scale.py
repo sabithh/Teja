@@ -612,10 +612,21 @@ KAGGLE_CKPT = '/kaggle/working/teja_stage5_best.pt'           # survives Kaggle 
 DRIVE_CKPT  = '/content/drive/MyDrive/teja_checkpoints/teja_stage5_best.pt'  # Colab + Drive
 LOCAL_CKPT  = os.path.join(checkpoint_dir, 'teja_stage5_best.pt')
 
+# Periodic "latest" checkpoint paths — saved every eval_interval regardless of val,
+# so a session crash never loses more than `eval_interval` steps of work.
+KAGGLE_LATEST = '/kaggle/working/teja_stage5_latest.pt'
+DRIVE_LATEST  = '/content/drive/MyDrive/teja_checkpoints/teja_stage5_latest.pt'
+LOCAL_LATEST  = os.path.join(checkpoint_dir, 'teja_stage5_latest.pt')
+
+# Prefer the LATEST checkpoint over BEST when resuming — latest = where training
+# actually was when the session died. Best may be from much earlier.
 resume_path = (
-    KAGGLE_CKPT if os.path.exists(KAGGLE_CKPT) else
-    DRIVE_CKPT  if os.path.exists(DRIVE_CKPT)  else
-    LOCAL_CKPT  if os.path.exists(LOCAL_CKPT)  else
+    KAGGLE_LATEST if os.path.exists(KAGGLE_LATEST) else
+    DRIVE_LATEST  if os.path.exists(DRIVE_LATEST)  else
+    LOCAL_LATEST  if os.path.exists(LOCAL_LATEST)  else
+    KAGGLE_CKPT   if os.path.exists(KAGGLE_CKPT)   else
+    DRIVE_CKPT    if os.path.exists(DRIVE_CKPT)    else
+    LOCAL_CKPT    if os.path.exists(LOCAL_CKPT)    else
     None
 )
 
@@ -625,8 +636,16 @@ if resume_path:
     model.load_state_dict(ckpt['model_state_dict'])
     optimizer.load_state_dict(ckpt['optimizer_state_dict'])
     start_step    = ckpt['step']
+    # If we resumed from "latest", separately read the historical best val loss
+    # from the best checkpoint so we don't overwrite a better best.
     best_val_loss = ckpt['val_loss']
-    print(f"  Step: {start_step:,} | Best val loss: {best_val_loss:.4f}\n")
+    for best_path in (KAGGLE_CKPT, DRIVE_CKPT, LOCAL_CKPT):
+        if os.path.exists(best_path):
+            best_only = torch.load(best_path, map_location='cpu')
+            if best_only.get('val_loss', float('inf')) < best_val_loss:
+                best_val_loss = best_only['val_loss']
+            break
+    print(f"  Step: {start_step:,} | Historical best val loss: {best_val_loss:.4f}\n")
 else:
     print("No checkpoint found — starting from scratch.\n")
 
@@ -650,33 +669,45 @@ for step in range(start_step, max_iters + 1):
             f"{elapsed:.0f}s"
         )
 
-        # Save best checkpoint (local + Drive if mounted)
+        # ---- Build a checkpoint dict (used for both best and latest saves) ----
+        ckpt_data = {
+            'step':                 step,
+            'model_state_dict':     model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'val_loss':             losses['val'].item(),
+            'train_loss':           losses['train'].item(),
+            'vocab_size':           vocab_size,
+            'n_embd':               n_embd,
+            'n_head':               n_head,
+            'n_layer':              n_layer,
+            'block_size':           block_size,
+            'total_params':         total_params,
+        }
+
+        # ---- ALWAYS save "latest" — safety net against session crashes ----
+        torch.save(ckpt_data, LOCAL_LATEST)
+        latest_saved_to = ['local']
+        if os.path.exists('/kaggle/working'):
+            torch.save(ckpt_data, KAGGLE_LATEST)
+            latest_saved_to.append('Kaggle')
+        if os.path.exists(os.path.dirname(DRIVE_LATEST)):
+            torch.save(ckpt_data, DRIVE_LATEST)
+            latest_saved_to.append('Drive')
+        print(f"   💾 latest saved → {', '.join(latest_saved_to)} (step {step:,})")
+
+        # ---- Save BEST checkpoint only if val improved ----
         if losses['val'] < best_val_loss:
             best_val_loss = losses['val']
-            ckpt_data = {
-                'step':                 step,
-                'model_state_dict':     model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-                'val_loss':             best_val_loss.item(),
-                'train_loss':           losses['train'].item(),
-                'vocab_size':           vocab_size,
-                'n_embd':               n_embd,
-                'n_head':               n_head,
-                'n_layer':              n_layer,
-                'block_size':           block_size,
-                'total_params':         total_params,
-            }
+            ckpt_data['val_loss'] = best_val_loss.item()
             torch.save(ckpt_data, LOCAL_CKPT)
-            saved_to = [LOCAL_CKPT]
-            # Kaggle: save to /kaggle/working/ — appears in Output tab, survives session end
+            saved_to = ['local']
             if os.path.exists('/kaggle/working'):
                 torch.save(ckpt_data, KAGGLE_CKPT)
-                saved_to.append('Kaggle Output')
-            # Colab: save to Drive if mounted
+                saved_to.append('Kaggle')
             if os.path.exists(os.path.dirname(DRIVE_CKPT)):
                 torch.save(ckpt_data, DRIVE_CKPT)
-                saved_to.append('Google Drive')
-            print(f"   ✓ Checkpoint saved → {', '.join(saved_to)} (step {step:,}, val {best_val_loss:.4f})")
+                saved_to.append('Drive')
+            print(f"   ✓ best saved → {', '.join(saved_to)} (step {step:,}, val {best_val_loss:.4f})")
 
     if step == max_iters:
         break
