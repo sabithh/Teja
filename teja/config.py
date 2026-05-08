@@ -81,6 +81,22 @@ STAGE_4_CONFIG = {
 # =============================================================================
 # Stage 5+ — Scaled configs (for Colab)
 # =============================================================================
+STAGE_8_CONFIG = {
+    'batch_size': 32,                       # auto-reduce to 16 on T4 if OOM
+    'gradient_accumulation_steps': 4,       # effective batch = 128
+    'block_size': 512,                      # 2x larger context than Stage 5
+    'learning_rate': 3e-4,
+    'max_iters': 50_000,                    # ~3 epochs over 1B tokens
+    'eval_interval': 1_000,
+    'eval_iters': 200,
+    'n_embd': 768,                          # GPT-2 small
+    'n_head': 12,
+    'n_layer': 12,
+    'dropout': 0.0,                         # no dropout for large models
+    'num_docs': 1_000_000,                  # 10x Stage 5 → ~1B tokens
+}
+
+
 STAGE_5_CONFIG = {
     'batch_size': 16,              # Reduced from 64 to fit T4 (15GB) VRAM
     'gradient_accumulation_steps': 4,  # Accumulate 4 steps → effective batch = 64
